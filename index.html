@@ -216,10 +216,10 @@
     }
 
     .scanning-reticle {
-      width: 72vw;
-      height: 96vw; /* Exact 3:4 Aspect Ratio matches physical frame */
-      max-width: 290px;
-      max-height: 386.66px;
+      width: 54vw;
+      height: 96vw; /* Exact 9:16 Aspect Ratio matches physical frame */
+      max-width: 225px;
+      max-height: 400px;
       border: 1px dashed rgba(0, 242, 254, 0.3);
       border-radius: 24px;
       position: relative;
@@ -432,7 +432,7 @@
       <div class="scanning-corner bottom-right"></div>
       <div class="scanning-line"></div>
     </div>
-    <div class="scan-prompt">Scan the physical 3:4 droplet frame to reveal animation</div>
+    <div class="scan-prompt">Scan the physical 9:16 droplet frame to reveal animation</div>
   </div>
 
   <!-- Floating Audio Unmute/Mute Toggle -->
@@ -470,10 +470,10 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Overlay Target logic using exact vertical 3:4 aspect ratio -->
+    <!-- Overlay Target logic using exact vertical 9:16 aspect ratio -->
     <a-entity mindar-image-target="targetIndex: 0" ar-target-listener>
       <a-video src="#animation-mp4" 
-               width="0.75" 
+               width="0.5625" 
                height="1.0" 
                position="0 0 0" 
                rotation="0 0 0">
