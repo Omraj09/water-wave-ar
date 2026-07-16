@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-  <title>Water Wave - Interactive WebAR Experience</title>
+  <title>Interactive WebAR Experience - Multiple Targets</title>
   
   <!-- Modern Premium Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -414,7 +414,7 @@
         </svg>
       </div>
 
-      <h1 id="loading-title">Water Wave AR</h1>
+      <h1 id="loading-title">Spatial AR Experience</h1>
       <p id="loading-status">Initializing advanced spatial engine...</p>
 
       <div class="progress-bar-container">
@@ -432,7 +432,7 @@
       <div class="scanning-corner bottom-right"></div>
       <div class="scanning-line"></div>
     </div>
-    <div class="scan-prompt">Scan the physical 9:16 droplet frame to reveal animation</div>
+    <div class="scan-prompt">Scan any target frame to reveal its video</div>
   </div>
 
   <!-- Floating Audio Unmute/Mute Toggle -->
@@ -448,17 +448,29 @@
 
   <!-- WebAR Scene using Free, Open Source MindAR and A-Frame -->
   <a-scene 
-    mindar-image="imageTargetSrc: ./water_wave.mind; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.0005; filterBeta: 100; missTolerance: 15; warmupTolerance: 5;" 
+    mindar-image="imageTargetSrc: ./water_wave.mind; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 1000; missTolerance: 5; warmupTolerance: 5;" 
     color-space="sRGB" 
-    renderer="colorManagement: true, physicallyCorrectLights: true" 
+    renderer="colorManagement: true; physicallyCorrectLights: false; antialias: false; precision: medium;" 
     vr-mode-ui="enabled: false" 
     device-orientation-permission-ui="enabled: false">
     
     <a-assets>
-      <!-- Premium mobile playback attributes: muted, playsinline, loop -->
-      <video id="animation-mp4" 
+      <!-- Video Target 0 (1st VID.mp4) - Optimized with preload="none" for smoother load -->
+      <video id="video-target-0" 
+             src="./1st%20VID.mp4" 
+             preload="none" 
+             loop="true" 
+             autoplay="true" 
+             muted="true" 
+             playsinline="true" 
+             webkit-playsinline="true" 
+             crossorigin="anonymous">
+      </video>
+
+      <!-- Video Target 1 (animation.mp4) - Optimized with preload="none" for smoother load -->
+      <video id="video-target-1" 
              src="./animation.mp4" 
-             preload="auto" 
+             preload="none" 
              loop="true" 
              autoplay="true" 
              muted="true" 
@@ -470,9 +482,19 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Overlay Target logic using exact vertical 9:16 aspect ratio -->
-    <a-entity mindar-image-target="targetIndex: 0" ar-target-listener>
-      <a-video src="#animation-mp4" 
+    <!-- Target 0 Entity (Uses targetIndex: 0 from the compiled .mind file) -->
+    <a-entity mindar-image-target="targetIndex: 0" ar-target-listener="videoSelector: #video-target-0">
+      <a-video src="#video-target-0" 
+               width="1.0" 
+               height="1.77778" 
+               position="0 0 0" 
+               rotation="0 0 0">
+      </a-video>
+    </a-entity>
+
+    <!-- Target 1 Entity (Uses targetIndex: 1 from the compiled .mind file) -->
+    <a-entity mindar-image-target="targetIndex: 1" ar-target-listener="videoSelector: #video-target-1">
+      <a-video src="#video-target-1" 
                width="1.0" 
                height="1.77778" 
                position="0 0 0" 
@@ -482,31 +504,42 @@
   </a-scene>
 
   <script>
-    // A-Frame target listener component to sync video playback
+    // Global variable to keep track of which video is active in view
+    window.activeVideo = null;
+
+    // A-Frame target listener component to sync video playback dynamically
     AFRAME.registerComponent('ar-target-listener', {
+      schema: {
+        videoSelector: {type: 'string'}
+      },
       init: function () {
-        const video = document.querySelector('#animation-mp4');
+        const video = document.querySelector(this.data.videoSelector);
         const scanningOverlay = document.querySelector('#ar-scanning-overlay');
         const unmuteBtn = document.querySelector('#ar-unmute-btn');
 
         // Play the video stream immediately when target is detected
         this.el.addEventListener('targetFound', () => {
-          console.log('AR Target Found: Running animation.');
+          console.log('AR Target Found: Playing ' + this.data.videoSelector);
           scanningOverlay.classList.add('hidden');
           unmuteBtn.classList.remove('hidden');
           
-          // Smoothly play video (handles cases where browser unblocked playback)
+          window.activeVideo = video;
+          
           video.play().catch(err => {
             console.log('Video autoplay blocked by browser policy:', err);
           });
         });
 
-        // Pause video immediately if user moves away from target to save resource/battery
+        // Pause video immediately if user moves away from target
         this.el.addEventListener('targetLost', () => {
-          console.log('AR Target Lost: Pausing animation.');
+          console.log('AR Target Lost: Pausing ' + this.data.videoSelector);
           scanningOverlay.classList.remove('hidden');
           unmuteBtn.classList.add('hidden');
           video.pause();
+          
+          if (window.activeVideo === video) {
+            window.activeVideo = null;
+          }
         });
       }
     });
@@ -517,7 +550,6 @@
       const loadingOverlay = document.querySelector('#ar-loading-overlay');
       const scanningOverlay = document.querySelector('#ar-scanning-overlay');
       const unmuteBtn = document.querySelector('#ar-unmute-btn');
-      const video = document.querySelector('#animation-mp4');
       const soundWaves = document.querySelector('.sound-waves');
       const btnText = document.querySelector('#btn-text');
 
@@ -545,22 +577,27 @@
         }
       });
 
-      // Sound button controller (unmute helper)
+      // Sound button controller (unmutes all videos together)
       unmuteBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // Avoid triggering any underlying double taps
         
-        if (video.muted) {
-          video.muted = false;
-          // Force active state refresh on iOS/Safari
-          video.play().then(() => {
-            btnText.innerText = "Mute Sound";
-            soundWaves.classList.add('playing');
-            unmuteBtn.style.borderColor = 'var(--glow-color)';
-          }).catch(err => {
-            console.error('Error on unmute play:', err);
-          });
+        const videos = document.querySelectorAll('video');
+        const shouldUnmute = videos[0].muted; // check state of first video
+        
+        videos.forEach(v => {
+          v.muted = !shouldUnmute;
+        });
+
+        if (shouldUnmute) {
+          btnText.innerText = "Mute Sound";
+          soundWaves.classList.add('playing');
+          unmuteBtn.style.borderColor = 'var(--glow-color)';
+          if (window.activeVideo) {
+            window.activeVideo.play().catch(err => {
+              console.error('Unmute play failed:', err);
+            });
+          }
         } else {
-          video.muted = true;
           btnText.innerText = "Tap for Audio";
           soundWaves.classList.remove('playing');
           unmuteBtn.style.borderColor = 'rgba(0, 242, 254, 0.25)';
